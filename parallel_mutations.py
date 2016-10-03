@@ -11,7 +11,8 @@ from lib.membase.api.exception import ServerUnavailableException
 import logging.config
 import threading
 import operator
-
+import time
+import unittest
 
 logging.basicConfig()
 log = logging.getLogger()
@@ -43,10 +44,16 @@ class LWWTtest(object):
                               time_synchronization="enabledWithoutDrift", proxy_port=11217)
             admin.wait_ready(bucketname, timeout=15.0)
 
-    def document_create(self, bucketname, docs=1000):
+    def bucket_delete(self, bucketname):
+        admin = Admin('Administrator', 'password', host=self.ip, port=8091)
+        admin.bucket_delete(name=bucketname)
+
+    def document_create(self, bucketname, docs=10000):
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         for i in range(1, docs + 1):
-            cb.insert(str(i), str(i))
+            timestamp = int(time.time())
+            data = {"value": str(i), "last_updated_time": timestamp, "mutations": 1}
+            cb.insert(str(i), data)
         return cb
 
     def add_remote_cluster(self, remoteIp, remotePort, username, password, name, demandEncryption=0, certificate=''):
@@ -154,7 +161,7 @@ class LWWTtest(object):
             log.error("/controller/createReplication failed : status:{0},content:{1}".format(status, content))
             raise Exception("create replication failed : status:{0},content:{1}".format(status, content))
 
-    def pause_replication(self, replication_id,pauseRequested=True):
+    def pause_replication(self, replication_id, pauseRequested=True):
         api = self.baseUrl + '/settings/replications/' + replication_id
         param_map = {'pauseRequested': pauseRequested}
         params = urllib.urlencode(param_map)
@@ -209,81 +216,106 @@ class LWWTtest(object):
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         for i in range(1, item_count, 4):
             result = cb.get(str(i))
-            cb.upsert(str(i), result.value + bucketname + "'")
-            result = cb.get(str(i+1))
-            cb.replace(str(i + 1), result.value + bucketname + "'")
-            cb.remove(str(i + 2))
+            timestamp1 = int(time.time())
+            data1 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp1,
+                     "mutations": result.value["mutations"] + 1}
+            cb.upsert(str(i), data1)
 
-        for i in range(item_count+1, item_count+item_count/4 + 1):
-            cb.insert(str(i), str(i))
+            if i + 1 <= item_count:
+                result = cb.get(str(i + 1))
+                timestamp2 = int(time.time())
+                data2 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp2,
+                         "mutations": result.value["mutations"] + 1}
+                cb.replace(str(i + 1), data2)
 
-    def comparison(self, src_ip, src_bucketname,compare, dst_ip, dst_bucketname,docs=10000):
-        mappings = { '<': operator.lt, '<=': operator.le,
-                     '>': operator.gt, '>=': operator.ge,
-                     '==': operator.eq, '!=': operator.ne }
+            if i + 2 <= item_count:
+                cb.remove(str(i + 2))
+
+        for i in range(item_count + 1, item_count + item_count / 4 + 1):
+            timestamp3 = int(time.time())
+            data = {"value": str(i), "last_updated_time": timestamp3, "mutations": 1}
+            cb.insert(str(i), data)
+
+    def comparison(self, src_ip, src_bucketname, compare, dst_ip, dst_bucketname, docs=10000):
+        mappings = {'<': operator.lt, '<=': operator.le,
+                    '>': operator.gt, '>=': operator.ge,
+                    '==': operator.eq, '!=': operator.ne}
         cb1 = Bucket('couchbase://' + src_ip + '/' + src_bucketname, password='')
         cb2 = Bucket('couchbase://' + dst_ip + '/' + dst_bucketname, password='')
-        for i in range(1, docs + docs/4 + 1):
+        for i in range(1, docs + docs / 4 + 1):
             key = str(i)
             try:
                 value_src = cb1.get(key)
                 value_dst = cb2.get(key)
-                if not mappings[compare](value_src.cas, value_dst.cas):
-                    print (key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
+                value_src_time = value_src.value['last_updated_time']
+                value_dst_time = value_dst.value['last_updated_time']
+
+                if not mappings[compare](value_src.cas, value_dst.cas) and not mappings[compare](value_src_time,
+                                                                                                 value_dst_time):
+                    print(key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
+                    print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
                     return False
                 else:
-                    print (key + " :  " + str(value_src.cas) + "<=" + str(value_dst.cas))
+                    print(key + " :  " + str(value_src.cas) + "<=" + str(value_dst.cas))
+                    print(key + " :  " + str(value_src_time) + "<=" + str(value_dst_time))
             except NotFoundError:
-                print ("key missing : " + key)
+                print("key missing : " + key)
 
         return True
 
 
+class Test(unittest.TestCase):
+    def tearDown(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww1.bucket_delete("src")
+        lww2 = LWWTtest(dst_ip, dst_port)
+        lww2.bucket_delete("dst")
 
-class Test:
-    lww1 = LWWTtest(src_ip, src_port)
-    lww2 = LWWTtest(dst_ip, dst_port)
+    def testLwwToLww(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
 
-    lww1.bucket_create("src", "lww")
-    cb1 = lww1.document_create("src", docs=100000)
+        lww1.bucket_create("src", "lww")
+        cb1 = lww1.document_create("src")
 
-    lww2.bucket_create("dst", "lww")
-    cb2 = lww2.document_create("dst", docs=100000)
+        lww2.bucket_create("dst", "lww")
+        cb2 = lww2.document_create("dst")
 
-    op1 = lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
-    op2 = lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
+        op1 = lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        op2 = lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
 
-    rep1 = lww1.start_replication("src", "AB", "dst")
-    rep2 = lww2.start_replication("dst", "BA", "src")
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        rep2 = lww2.start_replication("dst", "BA", "src")
 
-    lww1.pause_replication(rep1)
-    lww2.pause_replication(rep2)
+        lww1.pause_replication(rep1)
+        lww2.pause_replication(rep2)
 
-    # lww1.graceful_failover(src_ip_1, wait=1)
-    # lww1.cluster_rebalance(src_ip_1)
-    time.sleep(30)
-    #
-    # t1 = threading.Thread(target=lww1.mutations, args=("src",))
-    # t2 = threading.Thread(target=lww2.mutations, args=("dst",))
-    # t1.start()
-    # t2.start()
-    #
-    # t1.join()
-    # t2.join()
+        lww1.graceful_failover(src_ip_1, wait=1)
+        time.sleep(30)
+        lww1.cluster_rebalance(src_ip_1)
+        # time.sleep(30)
+        #
+        # t1 = threading.Thread(target=lww1.mutations, args=("src",))
+        # t2 = threading.Thread(target=lww2.mutations, args=("dst",))
+        # t1.start()
+        # t2.start()
+        #
+        # t1.join()
+        # t2.join()
 
-    lww1.mutations("src")
-    lww2.mutations("dst")
+        lww1.mutations("src")
+        lww2.mutations("dst")
 
-    # lww1.pause_replication(rep1, pauseRequested=False)
-    lww2.pause_replication(rep2, pauseRequested=False)
+        lww1.pause_replication(rep1, pauseRequested=False)
+        # lww2.pause_replication(rep2, pauseRequested=False)
 
-    time.sleep(60)
+        time.sleep(60)
 
-    value = lww1.comparison(src_ip,"src","<=",dst_ip,"dst", docs=100000)
-    if value:
-        print ("passed")
-    else:
-        print ("failed")
+        # value = lww1.comparison(src_ip,"src","<=",dst_ip,"dst", docs=10000)
+        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
 
-
+        if value:
+            assert True
+        else:
+            assert False
 
