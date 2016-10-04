@@ -23,7 +23,7 @@ src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
-docs_max = 10000
+docs_max = 10
 
 class LWWTtest(object):
     def __init__(self, ip, port):
@@ -55,7 +55,6 @@ class LWWTtest(object):
             log.error("/pools/default/remoteClusters failed : status:{0},content:{1}".format(status, content))
 
     def document_create(self, bucketname, docs=docs_max):
-        print("ip : " + self.ip)
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         # cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs + 1):
@@ -223,7 +222,8 @@ class LWWTtest(object):
         return json_parsed['basicStats']['itemCount']
 
     def mutations(self, bucketname,docs=docs_max):
-        cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+        #cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+        cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs, 4):
             result = cb.get(str(i))
             timestamp1 = int(time.time())
@@ -313,6 +313,7 @@ class LWWTtest(object):
 
 
 class TestLWW(unittest.TestCase):
+
     def tearDown(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww1._delete_all_buckets()
@@ -348,12 +349,39 @@ class TestLWW(unittest.TestCase):
         lww1.resume_replication(rep1)
         time.sleep(30)
 
-        # value = lww1.comparison(src_ip, "src", "!=", dst_ip, "dst")
-        #
-        # if value:
-        #     assert True
-        # else:
-        #     assert False
-        
+    def test_BiXDCRLwwToLww(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
+
+        lww1.bucket_create("src", "lww")
+        lww1.document_create("src")
+
+        lww2.bucket_create("dst", "lww")
+        lww2.document_create("dst")
+
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
+
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        rep2 = lww2.start_replication("dst", "BA", "src")
+
+        time.sleep(30)
+        lww1.pause_replication(rep1)
+        lww2.pause_replication(rep1)
+
+        t1 = threading.Thread(target=lww1.mutations, args=("src",))
+        t2 = threading.Thread(target=lww2.mutations, args=("dst",))
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
+
+        lww1.resume_replication(rep1)
+        lww2.resume_replication(rep2)
+
+        time.sleep(30)
+
+
 if __name__ == '__main__':
     unittest.main()
