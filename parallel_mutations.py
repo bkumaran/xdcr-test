@@ -353,39 +353,6 @@ class TestLWW(unittest.TestCase):
         #     assert True
         # else:
         #     assert False
-
-    def test_UniXDCRLwwToNonlww(self):
-        lww1 = LWWTtest(src_ip, src_port)
-        lww2 = LWWTtest(dst_ip, dst_port)
-
-        lww1.bucket_create("src1", "lww")
-        lww1.document_create("src1")
-
-        lww2.bucket_create("dst1", "non-lww")
-        lww2.document_create("dst1")
-
-        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
-        rep1 = lww1.start_replication("src1", "AB", "dst1")
-        time.sleep(30)
-        lww1.pause_replication(rep1)
-
-        t1 = threading.Thread(target=lww1.mutations, args=("src1",))
-        t2 = threading.Thread(target=lww2.mutations, args=("dst1",))
-        t1.start()
-        t2.start()
-
-        t1.join()
-        t2.join()
-
-        lww1.resume_replication(rep1)
-        time.sleep(30)
-        # value = lww1.comparison(src_ip, "src", "!=", dst_ip, "dst")
-        #
-        # if value:
-        #     assert True
-        # else:
-        #     assert False
-
-
+        
 if __name__ == '__main__':
     unittest.main()
