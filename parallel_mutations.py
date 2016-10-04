@@ -15,10 +15,10 @@ import httplib2
 logging.basicConfig()
 log = logging.getLogger()
 
-src_ip = "10.141.150.101"
-dst_ip = "10.141.150.102"
-src_ip_1 = "10.141.150.103"
-dst_ip_2 = "10.141.150.104"
+src_ip = "172.23.106.201"
+dst_ip = "172.23.106.227"
+src_ip_1 = "172.23.107.118"
+dst_ip_2 = "172.23.106.32"
 src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
