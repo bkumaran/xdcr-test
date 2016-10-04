@@ -314,14 +314,14 @@ class LWWTtest(object):
 
 class TestLWW(unittest.TestCase):
 
-    def tearDown(self):
-        lww1 = LWWTtest(src_ip, src_port)
-        lww1._delete_all_buckets()
-        lww2 = LWWTtest(dst_ip, dst_port)
-        lww2._delete_all_buckets()
-        time.sleep(30)
-        lww1._delete_all_references()
-        lww2._delete_all_references()
+#     def tearDown(self):
+#         lww1 = LWWTtest(src_ip, src_port)
+#         lww1._delete_all_buckets()
+#         lww2 = LWWTtest(dst_ip, dst_port)
+#         lww2._delete_all_buckets()
+#         time.sleep(30)
+#         lww1._delete_all_references()
+#         lww2._delete_all_references()
 
     def test_UniXDCRLwwToLww(self):
         lww1 = LWWTtest(src_ip, src_port)
