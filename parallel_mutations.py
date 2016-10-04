@@ -335,7 +335,7 @@ class TestLWW(unittest.TestCase):
 
         lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
         rep1 = lww1.start_replication("src", "AB", "dst")
-        time.sleep(30)
+        time.sleep(60)
         lww1.pause_replication(rep1)
 
         t1 = threading.Thread(target=lww1.mutations, args=("src",))
@@ -365,7 +365,7 @@ class TestLWW(unittest.TestCase):
         rep1 = lww1.start_replication("src", "AB", "dst")
         rep2 = lww2.start_replication("dst", "BA", "src")
 
-        time.sleep(30)
+        time.sleep(60)
         lww1.pause_replication(rep1)
         lww2.pause_replication(rep1)
 
