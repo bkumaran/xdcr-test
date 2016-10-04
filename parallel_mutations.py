@@ -5,7 +5,6 @@ import urllib
 import socket
 from couchbase.bucket import Bucket, NotFoundError
 from couchbase.admin import Admin
-from lib.membase.api.exception import ServerUnavailableException
 import logging.config
 import threading
 import operator
@@ -133,11 +132,11 @@ class LWWTtest(object):
             except socket.error as e:
                 log.error("socket error while connecting to {0} error {1} ".format(api, e))
                 if time.time() > end_time:
-                    raise ServerUnavailableException(ip=self.ip)
+                    raise Exception(ip=self.ip)
             except httplib2.ServerNotFoundError as e:
                 log.error("ServerNotFoundError error while connecting to {0} error {1} ".format(api, e))
                 if time.time() > end_time:
-                    raise ServerUnavailableException(ip=self.ip)
+                    raise Exception(ip=self.ip)
             time.sleep(3)
 
     def _create_headers(self):
