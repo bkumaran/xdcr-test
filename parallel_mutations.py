@@ -2,17 +2,16 @@ from __future__ import print_function
 import base64
 import json
 import urllib
-import time
 import socket
 from couchbase.bucket import Bucket, NotFoundError
 from couchbase.admin import Admin
-from lib.membase.api import httplib2
 from lib.membase.api.exception import ServerUnavailableException
 import logging.config
 import threading
 import operator
 import time
 import unittest
+import httplib2
 
 logging.basicConfig()
 log = logging.getLogger()
@@ -25,7 +24,7 @@ src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
-
+docs_max = 10000
 
 class LWWTtest(object):
     def __init__(self, ip, port):
@@ -48,8 +47,17 @@ class LWWTtest(object):
         admin = Admin('Administrator', 'password', host=self.ip, port=8091)
         admin.bucket_delete(name=bucketname)
 
-    def document_create(self, bucketname, docs=10000):
+    def cluster_delete(self, clustername):
+        api = self.baseUrl + "/pools/default/remoteClusters/" + clustername
+        status, content, _ = self._http_request(api, 'DELETE')
+        if status:
+            log.info("successful")
+        else:
+            log.error("/pools/default/remoteClusters failed : status:{0},content:{1}".format(status, content))
+
+    def document_create(self, bucketname, docs=docs_max):
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+        # cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs + 1):
             timestamp = int(time.time())
             data = {"value": str(i), "last_updated_time": timestamp, "mutations": 1}
@@ -171,6 +179,9 @@ class LWWTtest(object):
         else:
             log.error("/settings/replications/ failed : status:{0},content:{1}".format(status, content))
 
+    def resume_replication(self, replication_id):
+        self.pause_replication(replication_id, pauseRequested=False)
+
     def graceful_failover(self, failover_node, wait=0):
         count = 0
         api = self.baseUrl + '/controller/startGracefulFailover'
@@ -211,32 +222,31 @@ class LWWTtest(object):
         json_parsed = json.loads(content)
         return json_parsed['basicStats']['itemCount']
 
-    def mutations(self, bucketname):
-        item_count = self._item_count(bucketname)
+    def mutations(self, bucketname,docs=docs_max):
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
-        for i in range(1, item_count, 4):
+        for i in range(1, docs, 4):
             result = cb.get(str(i))
             timestamp1 = int(time.time())
             data1 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp1,
                      "mutations": result.value["mutations"] + 1}
             cb.upsert(str(i), data1)
 
-            if i + 1 <= item_count:
+            if i + 1 <= docs:
                 result = cb.get(str(i + 1))
                 timestamp2 = int(time.time())
                 data2 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp2,
                          "mutations": result.value["mutations"] + 1}
                 cb.replace(str(i + 1), data2)
 
-            if i + 2 <= item_count:
+            if i + 2 <= docs:
                 cb.remove(str(i + 2))
 
-        for i in range(item_count + 1, item_count + item_count / 4 + 1):
+        for i in range(docs + 1, docs + docs / 4 + 1):
             timestamp3 = int(time.time())
             data = {"value": str(i), "last_updated_time": timestamp3, "mutations": 1}
             cb.insert(str(i), data)
 
-    def comparison(self, src_ip, src_bucketname, compare, dst_ip, dst_bucketname, docs=10000):
+    def comparison(self, src_ip, src_bucketname, compare, dst_ip, dst_bucketname, docs=docs_max):
         mappings = {'<': operator.lt, '<=': operator.le,
                     '>': operator.gt, '>=': operator.ge,
                     '==': operator.eq, '!=': operator.ne}
@@ -263,59 +273,120 @@ class LWWTtest(object):
 
         return True
 
+    def _get_all_buckets(self):
+        api = self.baseUrl + "/pools/default/buckets"
+        status, content, _ = self._http_request(api, 'GET')
+        if status:
+            log.info("successful")
+        else:
+            log.error("/pools/default/buckets failed : status:{0},content:{1}".format(status, content))
+        data = json.loads(content)
+        bucket_list = []
+        for each in data:
+            if each['name'] != "default":
+                bucket_list.append(each['name'])
 
-class Test(unittest.TestCase):
+        return bucket_list
+
+    def _delete_all_buckets(self):
+        arr = self._get_all_buckets()
+        for bucket in arr:
+            self.bucket_delete(bucket)
+
+    def _get_all_references(self):
+        api = self.baseUrl + "/pools/default/remoteClusters"
+        status, content, _ = self._http_request(api, 'GET')
+        if status:
+            log.info("successful")
+        else:
+            log.error("/pools/default/remoteClusters failed : status:{0},content:{1}".format(status, content))
+        data = json.loads(content)
+        reference_list = []
+        for each in data:
+            reference_list.append(each['name'])
+        return reference_list
+
+    def _delete_all_references(self):
+        arr = self._get_all_references()
+        for cluster in arr:
+            self.cluster_delete(cluster)
+
+
+class TestLWW(unittest.TestCase):
     def tearDown(self):
         lww1 = LWWTtest(src_ip, src_port)
-        lww1.bucket_delete("src")
+        lww1._delete_all_buckets()
         lww2 = LWWTtest(dst_ip, dst_port)
-        lww2.bucket_delete("dst")
+        lww2._delete_all_buckets()
+        time.sleep(30)
+        lww1._delete_all_references()
+        lww2._delete_all_references()
 
-    def testLwwToLww(self):
+    def test_UniXDCRLwwToLww(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww2 = LWWTtest(dst_ip, dst_port)
 
         lww1.bucket_create("src", "lww")
-        cb1 = lww1.document_create("src")
+        lww1.document_create("src")
 
         lww2.bucket_create("dst", "lww")
-        cb2 = lww2.document_create("dst")
+        lww2.document_create("dst")
 
-        op1 = lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
-        op2 = lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
-
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
         rep1 = lww1.start_replication("src", "AB", "dst")
-        rep2 = lww2.start_replication("dst", "BA", "src")
-
-        lww1.pause_replication(rep1)
-        lww2.pause_replication(rep2)
-
-        lww1.graceful_failover(src_ip_1, wait=1)
         time.sleep(30)
-        lww1.cluster_rebalance(src_ip_1)
-        # time.sleep(30)
+        lww1.pause_replication(rep1)
+
+        t1 = threading.Thread(target=lww1.mutations, args=("src",))
+        t2 = threading.Thread(target=lww2.mutations, args=("dst",))
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
+
+        lww1.resume_replication(rep1)
+        time.sleep(30)
+
+        # value = lww1.comparison(src_ip, "src", "!=", dst_ip, "dst")
         #
-        # t1 = threading.Thread(target=lww1.mutations, args=("src",))
-        # t2 = threading.Thread(target=lww2.mutations, args=("dst",))
-        # t1.start()
-        # t2.start()
+        # if value:
+        #     assert True
+        # else:
+        #     assert False
+
+    def test_UniXDCRLwwToNonlww(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
+
+        lww1.bucket_create("src1", "lww")
+        lww1.document_create("src1")
+
+        lww2.bucket_create("dst1", "non-lww")
+        lww2.document_create("dst1")
+
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        rep1 = lww1.start_replication("src1", "AB", "dst1")
+        time.sleep(30)
+        lww1.pause_replication(rep1)
+
+        t1 = threading.Thread(target=lww1.mutations, args=("src1",))
+        t2 = threading.Thread(target=lww2.mutations, args=("dst1",))
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
+
+        lww1.resume_replication(rep1)
+        time.sleep(30)
+        # value = lww1.comparison(src_ip, "src", "!=", dst_ip, "dst")
         #
-        # t1.join()
-        # t2.join()
+        # if value:
+        #     assert True
+        # else:
+        #     assert False
 
-        lww1.mutations("src")
-        lww2.mutations("dst")
 
-        lww1.pause_replication(rep1, pauseRequested=False)
-        # lww2.pause_replication(rep2, pauseRequested=False)
-
-        time.sleep(60)
-
-        # value = lww1.comparison(src_ip,"src","<=",dst_ip,"dst", docs=10000)
-        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
-
-        if value:
-            assert True
-        else:
-            assert False
-
+if __name__ == '__main__':
+    unittest.main()
