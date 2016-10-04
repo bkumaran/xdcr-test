@@ -367,7 +367,7 @@ class TestLWW(unittest.TestCase):
 
         time.sleep(60)
         lww1.pause_replication(rep1)
-        lww2.pause_replication(rep1)
+        lww2.pause_replication(rep2)
 
         t1 = threading.Thread(target=lww1.mutations, args=("src",))
         t2 = threading.Thread(target=lww2.mutations, args=("dst",))
