@@ -17,11 +17,9 @@ python parallel_mutations.py
 We currently verify using both CAS values and also a timestamp that is added by the script as part of the document insert/upsert/replace
 
 Here we compare whether all the docs in the 'dst' bucket has a CAS value more than that of 'src' bucket
-```
-value = lww1.comparison(src_ip,"src","<=",dst_ip,"dst")
+```value = lww1.comparison(src_ip,"src","<=",dst_ip,"dst")
     if value:
         print ("passed")
     else:
         print ("failed")
-
 ```
