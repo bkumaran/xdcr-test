@@ -23,7 +23,7 @@ src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
-docs_max = 1000000
+docs_max = 10
 ram_quota = 1500
 
 class LWWTtest(object):
@@ -197,11 +197,14 @@ class LWWTtest(object):
             status, content, _ = self._http_request(api, 'GET')
             info = json.loads(content)
             while info[failover_node + ":8091"]["gracefulFailoverPossible"] == True and count != 10:
+                status, content, _ = self._http_request(api, 'GET')
+                info = json.loads(content)
                 log.info("sleeping")
                 time.sleep(5)
                 count += 1
 
-    def cluster_rebalance(self, failover_node):
+    def cluster_rebalance(self, failover_node, wait=0):
+        count = 0
         api = self.baseUrl + '/controller/rebalance'
         param_map = {'ejectedNodes': "",
                      'knownNodes': 'ns_1@' + self.ip + ',ns_1@' + failover_node}
@@ -211,6 +214,16 @@ class LWWTtest(object):
             log.info("successful")
         else:
             log.error("/controller/rebalance failed : status:{0},content:{1}".format(status, content))
+        if wait:
+            api = self.baseUrl + '/pools/default/tasks'
+            status, content, _ = self._http_request(api, 'GET')
+            info = json.loads(content)
+            while info[0]["subtype"] == "rebalance" and info[0]["status"] == "running" and count != 10:
+                status, content, _ = self._http_request(api, 'GET')
+                info = json.loads(content)
+                log.info("sleeping")
+                time.sleep(25)
+                count += 1
 
     def _item_count(self, bucketname):
         api = self.baseUrl + '/pools/default/buckets/' + bucketname
@@ -324,6 +337,36 @@ class TestLWW(unittest.TestCase):
         lww1._delete_all_references()
         lww2._delete_all_references()
 
+    
+    def test_UniXDCRLwwToLwwWhereDstDocumentsAreCreatedLaterThanSrc(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
+
+        lww1.bucket_create("src", "lww")
+        lww1.document_create("src")
+        lww2.bucket_create("dst", "lww")
+        lww2.document_create("dst")
+
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        time.sleep(30)
+        lww1.pause_replication(rep1)
+
+        # don't do parallel mutations
+        lww1.mutations("src")
+        time.sleep(30)
+        lww2.mutations("dst")
+
+        lww1.resume_replication(rep1)
+        time.sleep(30)
+
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
+            
     def test_UniXDCRLwwToLww(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww2 = LWWTtest(dst_ip, dst_port)
