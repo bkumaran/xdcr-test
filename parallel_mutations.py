@@ -26,6 +26,7 @@ dst_port1 = "8091"
 docs_max = 10
 ram_quota = 1500
 
+
 class LWWTtest(object):
     def __init__(self, ip, port):
         self.ip = ip
@@ -235,8 +236,8 @@ class LWWTtest(object):
         json_parsed = json.loads(content)
         return json_parsed['basicStats']['itemCount']
 
-    def mutations(self, bucketname,docs=docs_max):
-        #cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+    def mutations(self, bucketname, docs=docs_max):
+        # cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs, 4):
             result = cb.get(str(i))
@@ -327,7 +328,6 @@ class LWWTtest(object):
 
 
 class TestLWW(unittest.TestCase):
-
     def tearDown(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww1._delete_all_buckets()
@@ -336,8 +336,8 @@ class TestLWW(unittest.TestCase):
         time.sleep(30)
         lww1._delete_all_references()
         lww2._delete_all_references()
+        time.sleep(30)
 
-    
     def test_UniXDCRLwwToLwwWhereDstDocumentsAreCreatedLaterThanSrc(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww2 = LWWTtest(dst_ip, dst_port)
@@ -366,7 +366,7 @@ class TestLWW(unittest.TestCase):
             assert True
         else:
             assert False
-            
+
     def test_UniXDCRLwwToLww(self):
         lww1 = LWWTtest(src_ip, src_port)
         lww2 = LWWTtest(dst_ip, dst_port)
