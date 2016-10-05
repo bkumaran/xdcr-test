@@ -12,3 +12,6 @@ git clone https://github.com/bkumaran/xdcr-test.git
 cd xdcr-test
 python parallel_mutations.py
 ```
+
+## Verification ##
+We currently verify using both CAS values and also a timestamp that is added by the script as part of the document inser/upsert/replace
