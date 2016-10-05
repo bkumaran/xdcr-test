@@ -24,6 +24,7 @@ dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
 docs_max = 1000000
+ram_quota = 2000
 
 class LWWTtest(object):
     def __init__(self, ip, port):
@@ -35,10 +36,10 @@ class LWWTtest(object):
         admin = Admin('Administrator', 'password', host=self.ip, port=8091)
 
         if bucket_type.lower() == 'non-lww':
-            admin.bucket_create(name=bucketname, ram_quota=100)
+            admin.bucket_create(name=bucketname, ram_quota=ram_quota)ram_quota
             admin.wait_ready(bucketname, timeout=15.0)
         else:
-            self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=100,
+            self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
                               time_synchronization="enabledWithoutDrift", proxy_port=11217)
             admin.wait_ready(bucketname, timeout=15.0)
 
