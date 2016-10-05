@@ -1,5 +1,5 @@
 # xdcr-test
-xdcr-test contains the tests that tests XDCR with LWW bucket with ongoing parallel mutations.
+xdcr-test contains the script that tests XDCR with LWW bucket with ongoing parallel mutations and also verfies the CAS values.
 
 ## Requirements ##
 Python : 2.7 or greater
