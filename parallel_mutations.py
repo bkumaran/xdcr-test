@@ -36,7 +36,7 @@ class LWWTtest(object):
         admin = Admin('Administrator', 'password', host=self.ip, port=8091)
 
         if bucket_type.lower() == 'non-lww':
-            admin.bucket_create(name=bucketname, ram_quota=ram_quota)ram_quota
+            admin.bucket_create(name=bucketname, ram_quota=ram_quota)
             admin.wait_ready(bucketname, timeout=15.0)
         else:
             self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
