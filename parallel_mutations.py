@@ -24,7 +24,7 @@ dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
 docs_max = 1000000
-ram_quota = 2000
+ram_quota = 1500
 
 class LWWTtest(object):
     def __init__(self, ip, port):
