@@ -426,6 +426,79 @@ class TestLWW(unittest.TestCase):
 
         time.sleep(30)
 
+    def test_UniXDCRLwwToLwwFailOverSrc(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
+
+        lww1.bucket_create("src", "lww")
+        lww1.document_create("src")
+
+        lww2.bucket_create("dst", "lww")
+        lww2.document_create("dst")
+
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        time.sleep(60)
+
+        lww1.pause_replication(rep1)
+        lww1.graceful_failover(src_ip_1, wait=1)
+
+        lww1.mutations("src")
+        lww2.mutations("dst")
+        lww1.resume_replication(rep1)
+        time.sleep(60)
+        lww1.node_recovery(src_ip_1)
+        lww1.cluster_rebalance(src_ip_1, wait=1)
+
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
+
+    def test_BiXDCRLwwToLwwFailOverSrc(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
+
+        lww1.bucket_create("src", "lww")
+        lww1.document_create("src")
+
+        lww2.bucket_create("dst", "lww")
+        lww2.document_create("dst")
+
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
+
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        rep2 = lww2.start_replication("dst", "BA", "src")
+
+        time.sleep(60)
+
+        lww1.pause_replication(rep1)
+        lww2.pause_replication(rep2)
+
+        lww1.graceful_failover(src_ip_1, wait=1)
+
+        lww1.mutations("src")
+        lww2.mutations("dst")
+
+        lww1.resume_replication(rep1)
+        lww2.resume_replication(rep2)
+
+        time.sleep(60)
+
+        lww1.node_recovery(src_ip_1)
+        lww1.cluster_rebalance(src_ip_1, wait=1)
+
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "==", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
+
 
 if __name__ == '__main__':
     unittest.main()
