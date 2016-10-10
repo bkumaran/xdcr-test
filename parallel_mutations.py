@@ -280,9 +280,6 @@ class LWWTtest(object):
                     print(key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
                     print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
                     return False
-                else:
-                    print(key + " :  " + str(value_src.cas) + "<=" + str(value_dst.cas))
-                    print(key + " :  " + str(value_src_time) + "<=" + str(value_dst_time))
             except NotFoundError:
                 print("key missing : " + key)
 
