@@ -57,8 +57,8 @@ class LWWTtest(object):
             log.error("/pools/default/remoteClusters failed : status:{0},content:{1}".format(status, content))
 
     def document_create(self, bucketname, docs=docs_max):
-        cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
-        # cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
+#         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+        cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs + 1):
             timestamp = int(time.time())
             data = {"value": str(i), "last_updated_time": timestamp, "mutations": 1}
