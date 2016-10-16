@@ -23,7 +23,7 @@ src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
-docs_max = 5000000
+docs_max = 500
 ram_quota = 1712
 
 
@@ -275,13 +275,31 @@ class LWWTtest(object):
                 value_src_time = value_src.value['last_updated_time']
                 value_dst_time = value_dst.value['last_updated_time']
 
-                if not mappings[compare](value_src.cas, value_dst.cas) and not mappings[compare](value_src_time,
-                                                                                                 value_dst_time):
-                    print(key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
-                    print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
-                    return False
+                # if not mappings[compare](value_src.cas, value_dst.cas) and not mappings[compare](value_src_time,
+                #                                                                                  value_dst_time):
+                #     print(key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
+                #     print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
+                if value_src > value_dst:
+                    if value_src_time <= value_dst_time:
+                        return False
+                if value_src < value_dst:
+                    if value_src_time >= value_dst_time:
+                        return False
+                if value_src == value_dst:
+                    if value_src_time != value_dst_time:
+                        return False
+
+                if value_src_time > value_dst_time:
+                    if value_src <= value_dst:
+                        return False
+                if value_src_time < value_dst_time:
+                    if value_src >= value_dst:
+                        return False
+                if value_src_time == value_dst_time:
+                    if value_src != value_dst:
+                        return False
             except NotFoundError:
-                print("key missing : " + key)
+                pass
 
         return True
 
@@ -456,46 +474,46 @@ class TestLWW(unittest.TestCase):
         else:
             assert False
 
-#     def test_BiXDCRLwwToLwwFailOverSrc(self):
-#         lww1 = LWWTtest(src_ip, src_port)
-#         lww2 = LWWTtest(dst_ip, dst_port)
+    def test_BiXDCRLwwToLwwFailOverSrc(self):
+        lww1 = LWWTtest(src_ip, src_port)
+        lww2 = LWWTtest(dst_ip, dst_port)
 
-#         lww1.bucket_create("src", "lww")
-#         lww1.document_create("src")
+        lww1.bucket_create("src", "lww")
+        lww1.document_create("src")
 
-#         lww2.bucket_create("dst", "lww")
-#         lww2.document_create("dst")
+        lww2.bucket_create("dst", "lww")
+        lww2.document_create("dst")
 
-#         lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
-#         lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
+        lww1.add_remote_cluster(dst_ip, dst_port, "Administrator", "password", "AB")
+        lww2.add_remote_cluster(src_ip, src_port, "Administrator", "password", "BA")
 
-#         rep1 = lww1.start_replication("src", "AB", "dst")
-#         rep2 = lww2.start_replication("dst", "BA", "src")
+        rep1 = lww1.start_replication("src", "AB", "dst")
+        rep2 = lww2.start_replication("dst", "BA", "src")
 
-#         time.sleep(60)
+        time.sleep(60)
 
-#         lww1.pause_replication(rep1)
-#         lww2.pause_replication(rep2)
+        lww1.pause_replication(rep1)
+        lww2.pause_replication(rep2)
 
-#         lww1.graceful_failover(src_ip_1, wait=1)
+        lww1.graceful_failover(src_ip_1, wait=1)
 
-#         lww1.mutations("src")
-#         lww2.mutations("dst")
+        lww1.mutations("src")
+        lww2.mutations("dst")
 
-#         lww1.resume_replication(rep1)
-#         lww2.resume_replication(rep2)
+        lww1.resume_replication(rep1)
+        lww2.resume_replication(rep2)
 
-#         time.sleep(60)
+        time.sleep(60)
 
-#         lww1.node_recovery(src_ip_1)
-#         lww1.cluster_rebalance(src_ip_1, wait=1)
+        lww1.node_recovery(src_ip_1)
+        lww1.cluster_rebalance(src_ip_1, wait=1)
 
-#         # Values of CAS of dst should always be greater than src
-#         value = lww1.comparison(src_ip, "src", "==", dst_ip, "dst")
-#         if value:
-#             assert True
-#         else:
-#             assert False
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "==", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
 
 
 if __name__ == '__main__':
