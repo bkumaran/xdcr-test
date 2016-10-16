@@ -23,7 +23,7 @@ src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
 dst_port1 = "8091"
-docs_max = 1000
+docs_max = 10
 ram_quota = 1712
 
 
@@ -294,22 +294,34 @@ class LWWTtest(object):
                 #     print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
                 if value_src > value_dst:
                     if value_src_time <= value_dst_time:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
                 if value_src < value_dst:
                     if value_src_time >= value_dst_time:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
                 if value_src == value_dst:
                     if value_src_time != value_dst_time:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
 
                 if value_src_time > value_dst_time:
                     if value_src <= value_dst:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
                 if value_src_time < value_dst_time:
                     if value_src >= value_dst:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
                 if value_src_time == value_dst_time:
                     if value_src != value_dst:
+                        print(key + " :  " + str(value_src.cas) + "" + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
                         return False
             except NotFoundError:
                 pass
