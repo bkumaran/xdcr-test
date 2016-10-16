@@ -204,6 +204,7 @@ class LWWTtest(object):
                 time.sleep(5)
                 count += 1
 
+
     def cluster_rebalance(self, failover_node, wait=0):
         count = 0
         api = self.baseUrl + '/controller/rebalance'
