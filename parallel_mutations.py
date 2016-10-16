@@ -226,6 +226,19 @@ class LWWTtest(object):
                 time.sleep(25)
                 count += 1
 
+    def node_recovery(self, recovery_node, recovery_type="full"):
+        api = self.baseUrl + '/controller/setRecoveryType'
+        param_map = {
+            'otpNode': 'ns_1@' + recovery_node,
+            'recoveryType': recovery_type
+        }
+        params = urllib.urlencode(param_map)
+        status, content, _ = self._http_request(api, 'POST', params)
+        if status:
+            log.info("successful")
+        else:
+            log.error("controller/setRecoveryType failed : status:{0},content:{1}".format(status, content))
+
     def _item_count(self, bucketname):
         api = self.baseUrl + '/pools/default/buckets/' + bucketname
         status, content, _ = self._http_request(api, 'GET')
@@ -407,6 +420,12 @@ class TestLWW(unittest.TestCase):
 
         lww1.resume_replication(rep1)
         time.sleep(30)
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
 
     def test_BiXDCRLwwToLww(self):
         lww1 = LWWTtest(src_ip, src_port)
@@ -440,6 +459,13 @@ class TestLWW(unittest.TestCase):
         lww2.resume_replication(rep2)
 
         time.sleep(30)
+        # Values of CAS of dst should always be greater than src
+        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        if value:
+            assert True
+        else:
+            assert False
+
 
     def test_UniXDCRLwwToLwwFailOverSrc(self):
         lww1 = LWWTtest(src_ip, src_port)
