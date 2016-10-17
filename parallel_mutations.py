@@ -57,7 +57,7 @@ class LWWTtest(object):
             log.error("/pools/default/remoteClusters failed : status:{0},content:{1}".format(status, content))
 
     def document_create(self, bucketname, docs=docs_max):
-#         cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
+        # cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs + 1):
             timestamp = int(time.time())
@@ -220,12 +220,13 @@ class LWWTtest(object):
             api = self.baseUrl + '/pools/default/tasks'
             status, content, _ = self._http_request(api, 'GET')
             info = json.loads(content)
-            while info[0]["subtype"] == "rebalance" and info[0]["status"] == "running" and count != 10:
-                status, content, _ = self._http_request(api, 'GET')
-                info = json.loads(content)
-                log.info("sleeping")
-                time.sleep(25)
-                count += 1
+            if info[0]["subtype"] and info[0]["status"]:
+                while info[0]["subtype"] == "rebalance" and info[0]["status"] == "running" and count != 10:
+                    status, content, _ = self._http_request(api, 'GET')
+                    info = json.loads(content)
+                    log.info("sleeping")
+                    time.sleep(25)
+                    count += 1
 
     def node_recovery(self, recovery_node, recovery_type="full"):
         api = self.baseUrl + '/controller/setRecoveryType'
