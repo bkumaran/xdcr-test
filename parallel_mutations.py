@@ -254,21 +254,25 @@ class LWWTtest(object):
         # cb = Bucket('couchbase://' + self.ip + '/' + bucketname, password='')
         cb = Bucket('couchbase://' + self.ip + '/' + bucketname)
         for i in range(1, docs, 4):
-            result = cb.get(str(i))
-            timestamp1 = int(time.time())
-            data1 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp1,
-                     "mutations": result.value["mutations"] + 1}
-            cb.upsert(str(i), data1)
-
-            if i + 1 <= docs:
-                result = cb.get(str(i + 1))
-                timestamp2 = int(time.time())
-                data2 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp2,
+            try:
+                result = cb.get(str(i))
+                timestamp1 = int(time.time())
+                data1 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp1,
                          "mutations": result.value["mutations"] + 1}
-                cb.replace(str(i + 1), data2)
+                cb.upsert(str(i), data1)
 
-            if i + 2 <= docs:
-                cb.remove(str(i + 2))
+                if i + 1 <= docs:
+                    result = cb.get(str(i + 1))
+                    timestamp2 = int(time.time())
+                    data2 = {"value": result.value["value"] + bucketname + "'", "last_updated_time": timestamp2,
+                             "mutations": result.value["mutations"] + 1}
+                    cb.replace(str(i + 1), data2)
+
+                if i + 2 <= docs:
+                    cb.remove(str(i + 2))
+
+            except NotFoundError:
+                pass
 
         for i in range(docs + 1, docs + docs / 4 + 1):
             timestamp3 = int(time.time())
