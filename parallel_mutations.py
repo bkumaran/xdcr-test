@@ -3,7 +3,7 @@ import base64
 import json
 import urllib
 import socket
-from couchbase.bucket import Bucket, NotFoundError, KeyExistsError
+from couchbase.bucket import Bucket, NotFoundError, KeyExistsError, ProtocolError
 from couchbase.admin import Admin
 import logging.config
 import threading
@@ -40,9 +40,15 @@ class LWWTtest(object):
             admin.bucket_create(name=bucketname, ram_quota=ram_quota)
             admin.wait_ready(bucketname, timeout=15.0)
         else:
-            self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
-                              time_synchronization="enabledWithoutDrift", proxy_port=11217)
-            admin.wait_ready(bucketname, timeout=15.0)
+            try:
+                self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
+                                  time_synchronization="enabledWithoutDrift", proxy_port=11217)
+                admin.wait_ready(bucketname, timeout=15.0)
+            except ProtocolError:
+                time.sleep(30)
+                self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
+                                  time_synchronization="enabledWithoutDrift", proxy_port=11217)
+                admin.wait_ready(bucketname, timeout=15.0)
 
     def bucket_delete(self, bucketname):
         admin = Admin('Administrator', 'password', host=self.ip, port=8091)
@@ -203,7 +209,6 @@ class LWWTtest(object):
                 log.info("sleeping")
                 time.sleep(5)
                 count += 1
-
 
     def cluster_rebalance(self, failover_node, wait=0):
         count = 0
@@ -491,7 +496,6 @@ class TestLWW(unittest.TestCase):
             assert True
         else:
             assert False
-
 
     def test_UniXDCRLwwToLwwFailOverSrc(self):
         lww1 = LWWTtest(src_ip, src_port)
