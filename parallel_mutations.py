@@ -306,7 +306,8 @@ class LWWTtest(object):
                     if value_src == value_dst and value_src_time != value_dst_time:
                         print("3rd if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
-                        print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))                            return False
+                        print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
+                        return False
 
                     if value_src_time > value_dst_time and value_src <= value_dst:
                         print("4th if")
