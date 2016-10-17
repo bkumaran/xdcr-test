@@ -224,6 +224,8 @@ class LWWTtest(object):
                 while info[0]["subtype"] == "rebalance" and info[0]["status"] == "running" and count != 10:
                     status, content, _ = self._http_request(api, 'GET')
                     info = json.loads(content)
+                    if not info[0]["subtype"] or not info[0]["status"]:
+                        break
                     log.info("sleeping")
                     time.sleep(25)
                     count += 1
