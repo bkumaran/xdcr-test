@@ -292,42 +292,43 @@ class LWWTtest(object):
                 value_dst = cb2.get(key)
                 value_src_time = value_src.value['last_updated_time']
                 value_dst_time = value_dst.value['last_updated_time']
-
-                # if not mappings[compare](value_src.cas, value_dst.cas) and not mappings[compare](value_src_time,
-                #                                                                                  value_dst_time):
-                #     print(key + " :  " + str(value_src.cas) + ">" + str(value_dst.cas))
-                #     print(key + " :  " + str(value_src_time) + ">" + str(value_dst_time))
-                if value_src > value_dst and value_src_time <= value_dst_time:
+                if compare == "!=":
+                    if value_src > value_dst and value_src_time <= value_dst_time:
                         print("1st if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
                         print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
                         return False
-                if value_src < value_dst and value_src_time >= value_dst_time:
+                    if value_src < value_dst and value_src_time >= value_dst_time:
                         print("2nd if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
                         print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
                         return False
-                if value_src == value_dst and value_src_time != value_dst_time:
+                    if value_src == value_dst and value_src_time != value_dst_time:
                         print("3rd if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
-                        print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
-                        return False
+                        print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))                            return False
 
-                if value_src_time > value_dst_time and value_src <= value_dst:
+                    if value_src_time > value_dst_time and value_src <= value_dst:
                         print("4th if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
                         print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
                         return False
-                if value_src_time < value_dst_time and value_src >= value_dst:
+                    if value_src_time < value_dst_time and value_src >= value_dst:
                         print("5th if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
                         print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
                         return False
-                if value_src_time == value_dst_time and value_src != value_dst:
+                    if value_src_time == value_dst_time and value_src != value_dst:
                         print("6th if")
                         print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
                         print(key + " :  " + str(value_src_time) + " " + str(value_dst_time))
                         return False
+                else:
+                    if not mappings[compare](value_src.cas, value_dst.cas) and not mappings[compare](value_src_time,
+                                                                                             value_dst_time):
+                        print("else")
+                        print(key + " :  " + str(value_src.cas) + " " + str(value_dst.cas))
+                        print(key + " :  " + str(value_src_time) + "" + str(value_dst_time))
             except NotFoundError:
                 pass
 
@@ -438,7 +439,7 @@ class TestLWW(unittest.TestCase):
         lww1.resume_replication(rep1)
         time.sleep(30)
         # Values of CAS of dst should always be greater than src
-        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        value = lww1.comparison(src_ip, "src", "!=", dst_ip, "dst")
         if value:
             assert True
         else:
@@ -477,7 +478,7 @@ class TestLWW(unittest.TestCase):
 
         time.sleep(30)
         # Values of CAS of dst should always be greater than src
-        value = lww1.comparison(src_ip, "src", "<=", dst_ip, "dst")
+        value = lww1.comparison(src_ip, "src", "==", dst_ip, "dst")
         if value:
             assert True
         else:
@@ -551,7 +552,7 @@ class TestLWW(unittest.TestCase):
         lww1.node_recovery(src_ip_1)
         lww1.cluster_rebalance(src_ip_1, wait=1)
 
-        # Values of CAS of dst should always be greater than src
+        # Values of CAS of dst should be equal to src
         value = lww1.comparison(src_ip, "src", "==", dst_ip, "dst")
         if value:
             assert True
