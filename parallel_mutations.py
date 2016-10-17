@@ -3,7 +3,7 @@ import base64
 import json
 import urllib
 import socket
-from couchbase.bucket import Bucket, NotFoundError
+from couchbase.bucket import Bucket, NotFoundError, KeyExistsError
 from couchbase.admin import Admin
 import logging.config
 import threading
@@ -278,9 +278,12 @@ class LWWTtest(object):
                 pass
 
         for i in range(docs + 1, docs + docs / 4 + 1):
-            timestamp3 = int(time.time())
-            data = {"value": str(i), "last_updated_time": timestamp3, "mutations": 1}
-            cb.insert(str(i), data)
+            try:
+                timestamp3 = int(time.time())
+                data = {"value": str(i), "last_updated_time": timestamp3, "mutations": 1}
+                cb.insert(str(i), data)
+            except KeyExistsError:
+                pass
 
     def comparison(self, src_ip, src_bucketname, compare, dst_ip, dst_bucketname, docs=docs_max):
         mappings = {'<': operator.lt, '<=': operator.le,
