@@ -11,16 +11,14 @@ import operator
 import time
 import unittest
 import httplib2
-import sys
 
 logging.basicConfig()
 log = logging.getLogger()
 
-# src_ip = "172.23.121.209"
-# dst_ip = "172.23.121.210"
-# src_ip_1 = "172.23.121.211"
-# dst_ip_2 = "172.23.121.170"
-src_ip,dst_ip,src_ip_1,dst_ip_2 = str(sys.argv[1:]).split(",")
+src_ip = "172.23.121.209"
+dst_ip = "172.23.121.210"
+src_ip_1 = "172.23.121.211"
+dst_ip_2 = "172.23.121.170"
 src_port = "8091"
 dst_port = "8091"
 src_port1 = "8091"
