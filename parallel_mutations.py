@@ -11,6 +11,7 @@ import operator
 import time
 import unittest
 import httplib2
+import sys
 
 logging.basicConfig()
 log = logging.getLogger()
