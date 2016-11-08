@@ -42,12 +42,12 @@ class LWWTtest(object):
         else:
             try:
                 self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
-                                  time_synchronization="enabledWithoutDrift", proxy_port=11217)
+                                  conflict_resolution_type="lww", proxy_port=11217)
                 admin.wait_ready(bucketname, timeout=15.0)
             except ProtocolError:
                 time.sleep(30)
                 self.__bucket_lww('Administrator', 'password', bucketname, ram_quota=ram_quota,
-                                  time_synchronization="enabledWithoutDrift", proxy_port=11217)
+                                  conflict_resolution_type="lww", proxy_port=11217)
                 admin.wait_ready(bucketname, timeout=15.0)
 
     def bucket_delete(self, bucketname):
@@ -99,11 +99,11 @@ class LWWTtest(object):
             raise Exception("remoteCluster API '{0} remote cluster' failed".format(op))
         return remoteCluster
 
-    def __bucket_lww(self, username, password, bucketname, ram_quota, time_synchronization, proxy_port):
+    def __bucket_lww(self, username, password, bucketname, ram_quota, conflict_resolution_type, proxy_port):
         param_map = {'username': username,
                      'password': password,
                      'name': bucketname,
-                     'timeSynchronization': time_synchronization,
+                     'conflict_resolution_type': conflict_resolution_type,
                      'ramQuotaMB': ram_quota,
                      'proxyPort': proxy_port,
                      'authType': "none"}
